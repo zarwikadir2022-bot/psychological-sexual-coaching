@@ -1,163 +1,117 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import google.generativeai as genai
 from datetime import datetime
 
-# --- 1. إعداد الصفحة (يجب أن يكون أول أمر إلزامي) ---
+# --- 1. إعداد الصفحة والذكاء الاصطناعي ---
 st.set_page_config(
-    page_title="فضاء الاستشارة والنمو 2026",
+    page_title="فضاء الاستشارة الذكي 2026",
     page_icon="🌿",
     layout="centered"
 )
 
-# --- 2. إعداد قاعدة البيانات (نسخة v4 لضمان ثبات الهيكل) ---
-DB_NAME = 'consultations_v4.db'
+# --- نظام الأمان: جلب المفتاح من Secrets ---
+try:
+    # سيقوم التطبيق بالبحث عن المفتاح في إعدادات Streamlit المخفية
+    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    genai.configure(api_key=GOOGLE_API_KEY)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except Exception as e:
+    st.error("خطأ: لم يتم العثور على مفتاح الـ API. يرجى إضافته في إعدادات Secrets.")
+    st.stop()
+
+# --- 2. إعداد قاعدة البيانات ---
+DB_NAME = 'clinic_smart_v6.db'
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS bookings
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                  name TEXT, age INTEGER, service TEXT, 
-                  mood TEXT, description TEXT, 
-                  contact_method TEXT, contact_details TEXT,
-                  date TEXT, time TEXT, timestamp TEXT)''')
+                  name TEXT, service TEXT, contact TEXT, 
+                  mood TEXT, timestamp TEXT)''')
     conn.commit()
     conn.close()
 
-# --- 3. الألوان والجمالية (CSS) ---
+# --- 3. تصميم الواجهة (CSS) ---
 st.markdown("""
 <style>
-    .stButton>button {
-        border-radius: 20px;
-        background-color: #E69F87;
-        color: white;
-        width: 100%;
-    }
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        border-radius: 10px;
-    }
-    .main {
-        background-color: #FDFCF8;
-    }
-    .trust-box {
-        background-color: #F3F0E7;
-        padding: 20px;
-        border-radius: 15px;
-        border-right: 5px solid #E69F87;
-        margin-top: 20px;
-    }
+    .stButton>button { border-radius: 20px; background-color: #E69F87; color: white; width: 100%; }
+    .main { background-color: #FDFCF8; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. فضاء العميل (واجهة الحجز) ---
-def client_page():
-    st.title("🌿 فضاءك الآمن للاستشارة")
-    st.markdown("<h4 style='color: #6B6B6B; font-weight: normal;'>خطوتك الأولى نحو التوازن النفسي والانسجام تبدأ من هنا.</h4>", unsafe_allow_html=True)
+# --- 4. وظيفة المساعد الذكي (أنيس) ---
+def ai_chatbot():
+    st.markdown("---")
+    st.subheader("🤖 المساعد الذكي 'أنيس'")
     
-    with st.form("booking_form"):
-        st.subheader("📌 المعلومات الأساسية")
-        col1, col2 = st.columns(2)
-        with col1:
-            name = st.text_input("الاسم أو اللقب المستعار")
-        with col2:
-            age = st.number_input("العمر", min_value=18, max_value=100, step=1)
-        
-        st.subheader("📞 وسيلة التواصل")
-        c_col1, c_col2 = st.columns([1, 2])
-        with c_col1:
-            method = st.radio("تواصل عبر:", ["واتساب/هاتف", "إيميل"])
-        with c_col2:
-            details = st.text_input("رقم الهاتف أو عنوان البريد الإلكتروني")
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-        st.subheader("🔍 تفاصيل الجلسة")
-        service = st.selectbox("مجال الاستشارة المطلوب", [
-            "🧠 التوازن النفسي وإدارة الضغوط",
-            "❤️ الصحة الجنسية والعلاقات",
-            "🤝 الإرشاد الزوجي والأسري",
-            "🚀 كوتشينغ الأداء والنمو الشخصي"
-        ])
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if prompt := st.chat_input("اسأل 'أنيس' هنا..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        with st.chat_message("assistant"):
+            system_instruction = (
+                "أنت 'أنيس'، مساعد افتراضي لعيادة كوتشينغ واستشارات نفسية وجنسية في تونس. "
+                "تحدث بلهجة تونسية مهذبة وبسيطة. كن متعاطفاً وحافظ على السرية."
+            )
+            
+            try:
+                full_prompt = f"{system_instruction}\nسؤال المستخدم: {prompt}"
+                response = model.generate_content(full_prompt)
+                st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            except:
+                st.error("يرجى التأكد من إعداد المفتاح بشكل صحيح.")
+
+# --- 5. فضاء العميل ---
+def client_page():
+    st.title("🌿 فضاء الاستشارة والخصوصية")
+    with st.form("booking_form"):
+        st.subheader("📅 حجز موعد جديد")
+        name = st.text_input("الاسم أو الكنية")
+        contact = st.text_input("رقم الهاتف أو الإيميل")
+        service = st.selectbox("نوع الاستشارة", ["توازن نفسي", "صحة جنسية", "إرشاد زوجي", "كوتشينغ"])
+        mood = st.select_slider("كيف حالك اليوم؟", options=["تعبان", "قلق", "عادي", "باهي", "مرتاح"])
         
-        mood = st.select_slider("كيف تصف حالتك النفسية اليوم؟", 
-                               options=["مرهق", "قلق", "متوسط", "هادئ", "مستقر"])
-        
-        description = st.text_area("وصف موجز لما ترغب في مناقشته (اختياري)")
-        
-        st.subheader("⏰ الموعد المفضل")
-        col3, col4 = st.columns(2)
-        with col3:
-            date = st.date_input("اختر اليوم")
-        with col4:
-            time = st.time_input("التوقيت التقريبي")
-        
-        submitted = st.form_submit_button("إرسال طلب الحجز بكل أمان")
-        
-        if submitted:
-            if name and details:
+        if st.form_submit_button("إرسال طلب الحجز"):
+            if name and contact:
                 conn = sqlite3.connect(DB_NAME)
                 c = conn.cursor()
-                c.execute("""INSERT INTO bookings 
-                          (name, age, service, mood, description, contact_method, contact_details, date, time, timestamp) 
-                          VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                          (name, age, service, mood, description, method, details, str(date), str(time), datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                c.execute("INSERT INTO bookings (name, service, contact, mood, timestamp) VALUES (?,?,?,?,?)",
+                          (name, service, contact, mood, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                 conn.commit()
                 conn.close()
-                st.success(f"✅ تم استلام طلبك يا {name}. سنتواصل معك عبر {method} قريباً.")
-                st.balloons()
+                st.success("✅ تم استلام طلبك بنجاح.")
             else:
-                st.error("⚠️ يرجى التأكد من ملء الاسم ووسيلة التواصل.")
+                st.error("الرجاء ملء البيانات.")
+    ai_chatbot()
 
-    # ميثاق الثقة والخصوصية
-    st.markdown("""
-    <div class="trust-box">
-        <h5 style="color: #4A4A4A;">🛡️ ميثاق الثقة والخصوصية:</h5>
-        <p style="color: #6B6B6B; font-size: 0.9em;">
-        • <b>السرية المهنية:</b> معلوماتك وجلساتك سر مقدّس لا يطلع عليه أحد.<br>
-        • <b>الإطار القانوني:</b> المعطيات الشخصية محمية وفق القانون التونسي عدد 63 لسنة 2004.<br>
-        • <b>الأمان الرقمي:</b> بياناتك مشفرة ومخزنة في بيئة تقنية آمنة.<br>
-        • <b>فضاء بدون أحكام:</b> مساحة آمنة للتعبير بحرية تامة.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-# --- 5. لوحة التحكم (الإدارة والتحليل) ---
+# --- 6. لوحة التحكم ---
 def admin_page():
-    st.sidebar.title("🔐 بوابة المدير")
-    pwd = st.sidebar.text_input("أدخل رمز الدخول", type="password")
-    
+    pwd = st.sidebar.text_input("رمز الإدارة", type="password")
     if pwd == "admin2026":
-        st.title("📊 لوحة قيادة الاستشارات")
-        
+        st.title("📊 سجل المواعيد")
         conn = sqlite3.connect(DB_NAME)
-        df = pd.read_sql_query("SELECT * FROM bookings ORDER BY timestamp DESC", conn)
+        df = pd.read_sql_query("SELECT * FROM bookings", conn)
         conn.close()
-        
-        if not df.empty:
-            # مقاييس سريعة
-            m1, m2, m3 = st.columns(3)
-            m1.metric("إجمالي الحجوزات", len(df))
-            m2.metric("حالات قلقة/مرهقة", len(df[df['mood'].isin(['مرهق', 'قلق'])]))
-            m3.metric("أكثر تخصص طلباً", df['service'].mode()[0].split()[-1])
-            
-            st.write("---")
-            st.subheader("📈 التحليل البصري")
-            st.bar_chart(df['service'].value_counts())
-            
-            st.subheader("📋 السجل التفصيلي")
-            st.dataframe(df)
-            
-            csv = df.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("📥 تحميل التقرير الشامل CSV", csv, "consultations_2026.csv", "text/csv")
-        else:
-            st.info("لا توجد حجوزات مسجلة حتى الآن.")
+        st.dataframe(df)
     elif pwd != "":
-        st.sidebar.error("الرمز غير صحيح")
+        st.sidebar.error("الرمز خطأ")
 
-# --- 6. التشغيل الرئيسي ---
+# --- 7. التشغيل ---
 def main():
     init_db()
-    menu = st.sidebar.radio("التنقل", ["فضاء العميل", "لوحة التحكم"])
-    
+    menu = st.sidebar.radio("القائمة", ["فضاء العميل", "لوحة التحكم"])
     if menu == "فضاء العميل":
         client_page()
     else:
