@@ -4,36 +4,38 @@ import sqlite3
 from datetime import datetime
 from PIL import Image
 
-# --- إعدادات الصفحة ---
+# --- إعدادات الصفحة والهوية البصرية ---
 st.set_page_config(
-    page_title="فضاء الاستشارات الآمن",
+    page_title="فضاء الاستشارات والنمو",
     page_icon="🌿",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# --- لمسة CSS للألوان والجمالية ---
+# --- لمسة جمالية CSS (ألوان دافئة ومحايدة) ---
 st.markdown("""
 <style>
     .stButton>button {
         border-radius: 20px;
-        padding-top: 10px;
-        padding-bottom: 10px;
+        background-color: #E69F87;
+        color: white;
+        border: none;
     }
     .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {
-        border-radius: 10px;
+        border-radius: 12px;
+        border: 1px solid #F3F0E7;
     }
-    .stAlert {
-        border-radius: 15px;
+    .main {
+        background-color: #FDFCF8;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 1. إعداد قاعدة البيانات المحدثة ---
+# --- 1. إدارة قاعدة البيانات (مع معالجة الأخطاء السابقة) ---
 def init_db():
-    conn = sqlite3.connect('consultations_secure.db')
+    # سنستخدم اسم ملف جديد لضمان تطبيق الهيكل الجديد فوراً
+    conn = sqlite3.connect('consultations_v3.db')
     c = conn.cursor()
-    # إضافة أعمدة وسيلة التواصل
     c.execute('''CREATE TABLE IF NOT EXISTS bookings
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                   name TEXT, age INTEGER, service TEXT, 
@@ -46,64 +48,60 @@ def init_db():
 # --- 2. إعدادات الأمان ---
 ADMIN_PASSWORD = "admin2026" 
 
-# --- 3. فضاء العميل ---
+# --- 3. فضاء العميل (واجهة الاستقبال) ---
 def client_page():
+    # محاولة عرض صورة ترحيبية هادئة
     try:
-        image = Image.open('welcome_img.svg') 
+        image = Image.open('welcome_img.png') 
         st.image(image, use_column_width=True)
     except:
-        st.write("") 
+        st.write("🌿")
 
-    st.title("🌿 فضاءك الآمن للاستشارة")
-    st.markdown("""
-    <h4 style='text-align: center; color: #6B6B6B; font-weight: normal;'>
-    نحن هنا لنستمع إليك بخصوصية تامة. اختر وسيلة التواصل التي تفضلها لنتمكن من الوصول إليك.
-    </h4>
-    """, unsafe_allow_html=True)
-    st.write("---")
+    st.title("مرحباً بك في فضائك الخاص")
+    st.markdown("<p style='color: #6B6B6B;'>نحن نؤمن بأن الصدق مع الذات هو أول خطوة نحو التحرر. اختر وسيلة التواصل التي تريحك، وسنكون بجانبك.</p>", unsafe_allow_html=True)
     
-    with st.form("consultation_form"):
-        st.subheader("📝 معلوماتك الأساسية")
+    with st.form("professional_booking_form"):
+        st.subheader("📌 المعلومات الأساسية")
         col1, col2 = st.columns(2)
         with col1:
-            name = st.text_input("الاسم أو اللقب المستعار")
+            name = st.text_input("الاسم (أو كنية تفضلها)")
         with col2:
-            age = st.number_input("العمر", min_value=18, max_value=90, step=1)
+            age = st.number_input("العمر", min_value=18, max_value=100, step=1)
         
-        st.subheader("📞 وسيلة التواصل المفضلة")
+        st.subheader("📞 كيف نصل إليك؟")
         contact_method = st.radio(
-            "كيف تفضل أن نتواصل معك لتأكيد الموعد؟",
-            ["الهاتف (WhatsApp/اتصال)", "البريد الإلكتروني (Email)"],
+            "ما هي الوسيلة التي تفضلها للتواصل الأولي؟",
+            ["واتساب / هاتف", "بريد إلكتروني"],
             horizontal=True
         )
-        contact_details = st.text_input("أدخل رقم الهاتف أو الإيميل الخاص بك")
+        contact_details = st.text_input("أدخل الرقم أو الإيميل هنا")
 
-        st.subheader("💬 تفاصيل الجلسة")
-        service = st.selectbox("نوع الاستشارة المطلوبة", [
-            "🧠 استشارة نفسية (قلق، ضغوط، اكتئاب)",
-            "❤️ استشارة في الصحة الجنسية والعلاقات",
-            "🤝 استشارة زوجية وأسرية",
-            "🚀 كوتشينغ أداء وتطوير ذاتي"
+        st.subheader("🔍 تفاصيل الاستشارة")
+        service = st.selectbox("مجال الاستشارة", [
+            "🧠 التوازن النفسي وإدارة الضغوط",
+            "❤️ الصحة الجنسية والعلاقات الحميمية",
+            "🤝 الإرشاد الزوجي والأسري",
+            "🚀 كوتشينغ الأداء والنمو الشخصي"
         ])
         
-        mood = st.select_slider("كيف تشعر اليوم بشكل عام؟", 
-                               options=["مرهق جداً", "منخفض الطاقة", "متوسط", "جيد", "ممتاز ومرتاح"], value="متوسط")
+        mood = st.select_slider("كيف تصف حالتك النفسية اليوم؟", 
+                               options=["مرهق", "قلق", "متوسط", "هادئ", "مستقر تماماً"])
         
-        description = st.text_area("مساحة حرة: صف لنا باختصار ما ترغب في مناقشته")
+        description = st.text_area("هل هناك رسالة معينة تود إيصالها قبل الجلسة؟")
         
-        st.subheader("📅 الموعد المفضل")
+        st.subheader("⏰ الموعد المفضل")
         col3, col4 = st.columns(2)
         with col3:
-            date = st.date_input("اليوم المفضل")
+            date = st.date_input("اختر اليوم")
         with col4:
-            time = st.time_input("التوقيت المقترح")
+            time = st.time_input("التوقيت التقريبي")
         
-        st.write("") 
-        submitted = st.form_submit_button("تأكيد حجز الجلسة الآن", type="primary")
+        st.write("---")
+        submitted = st.form_submit_button("إرسال طلب الحجز بكل أمان")
         
         if submitted:
             if name and contact_details:
-                conn = sqlite3.connect('consultations_secure.db')
+                conn = sqlite3.connect('consultations_v3.db')
                 c = conn.cursor()
                 c.execute("""INSERT INTO bookings 
                           (name, age, service, mood, description, contact_method, contact_details, date, time, timestamp) 
@@ -111,47 +109,51 @@ def client_page():
                           (name, age, service, mood, description, contact_method, contact_details, str(date), str(time), datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                 conn.commit()
                 conn.close()
-                
-                st.success(f"✅ شكراً {name}. تم استلام طلبك، سنتواصل معك عبر {contact_method} في أقرب وقت.")
+                st.success(f"تم استلام طلبك يا {name}. سنقوم بمراسلته عبر {contact_method} لتأكيد الموعد.")
                 st.balloons()
             else:
-                st.warning("⚠️ يرجى إدخال الاسم ووسيلة التواصل لنتمكن من الرد عليك.")
+                st.error("الرجاء التأكد من كتابة الاسم ووسيلة التواصل.")
 
-    st.write("")
-    with st.expander("🛡️ التزامنا بالخصوصية والسرية"):
-        st.markdown("<div style='background-color: #F3F0E7; padding: 15px; border-radius: 10px;'>نلتزم بحماية بياناتك وسرية تواصلنا وفق القوانين المعمول بها.</div>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.caption("🔒 جميع بياناتك محمية بموجب السرية المهنية والقانون التونسي لحماية المعطيات الشخصية.")
 
-# --- 4. لوحة تحكم المدير ---
+# --- 4. لوحة تحكم المدير (تحليل البيانات) ---
 def admin_page():
-    st.sidebar.title("🔐 منطقة الإدارة")
-    password_input = st.sidebar.text_input("كلمة المرور", type="password")
+    st.sidebar.header("بوابة المدير")
+    pwd = st.sidebar.text_input("رمز الدخول", type="password")
     
-    if password_input == ADMIN_PASSWORD:
-        st.title("📊 لوحة المتابعة")
+    if pwd == ADMIN_PASSWORD:
+        st.title("📊 لوحة القيادة والتحليل")
         
-        conn = sqlite3.connect('consultations_secure.db')
+        conn = sqlite3.connect('consultations_v3.db')
         df = pd.read_sql_query("SELECT * FROM bookings ORDER BY timestamp DESC", conn)
         conn.close()
         
         if not df.empty:
-            st.subheader("📋 قائمة الحجوزات ووسائل التواصل")
-            # تلوين الجدول لسهولة القراءة
-            st.dataframe(df)
+            # مقاييس ذكاء الأعمال (BI Metrics)
+            m1, m2, m3 = st.columns(3)
+            m1.metric("إجمالي الحالات", len(df))
+            m2.metric("حالات قلقة/مرهقة", len(df[df['mood'].isin(['مرهق', 'قلق'])]))
+            m3.metric("الأكثر طلباً", df['service'].mode()[0].split()[-1])
             
+            st.write("---")
+            st.subheader("سجل المواعيد المفصل")
+            st.dataframe(df.style.background_gradient(cmap='YlOrRd', subset=['age']))
+            
+            # تصدير البيانات للتحليل الخارجي
             csv = df.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("📥 تصدير البيانات", csv, "consultations_full_report.csv", "text/csv")
+            st.download_button("تحميل تقرير البيانات CSV", csv, "daily_report.csv", "text/csv")
         else:
-            st.info("لا توجد طلبات جديدة.")
-            
-    elif password_input != "":
-        st.sidebar.error("⛔ كلمة المرور خاطئة.")
+            st.info("لا توجد حجوزات حتى اللحظة.")
+    elif pwd != "":
+        st.sidebar.error("الرمز غير صحيح")
 
 # --- 5. التشغيل الرئيسي ---
 def main():
     init_db()
-    choice = st.sidebar.radio("التنقل", ["صفحة العميل (الحجز)", "لوحة التحكم (للإدارة)"])
+    menu = st.sidebar.radio("التنقل", ["فضاء العميل", "الإدارة"])
     
-    if choice == "صفحة العميل (الحجز)":
+    if menu == "فضاء العميل":
         client_page()
     else:
         admin_page()
